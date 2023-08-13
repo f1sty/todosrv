@@ -24,6 +24,7 @@ start(_StartType, _StartArgs) ->
     todosrv_sup:start_link().
 
 stop(_State) ->
+    cowboy:stop_listener(http),
     ok.
 
 %% internal functions
