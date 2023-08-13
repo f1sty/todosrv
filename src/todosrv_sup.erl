@@ -29,7 +29,8 @@ init([]) ->
         #{strategy => one_for_all,
           intensity => 0,
           period => 1},
-    ChildSpecs = [#{id => db, start => {todosrv_db, start_link, [[]]}}],
+        {ok, [{todosrv_db, DbConfig}]} = application:get_env(todosrv),
+    ChildSpecs = [#{id => db, start => {todosrv_db, start_link, [DbConfig]}}],
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions

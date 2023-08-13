@@ -5,7 +5,15 @@
   {registered, []},
   {mod, {todosrv_app, []}},
   {applications, [kernel, stdlib]},
-  {env, []},
+  {env, [{todosrv,
+  [{todosrv_db,
+    [
+    {database, "todosrv_db"},
+    {username, "todosrv"},
+    {host, "database"},
+    {password, "todosrv_supersecure"}
+    ]
+  }]}]},
   {modules, []},
   {licenses, ["Apache-2.0"]},
   {links, []}]}.

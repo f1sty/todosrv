@@ -7,13 +7,8 @@
 
 -include_lib("kernel/include/logger.hrl").
 
-start_link(_Args) ->
-    {ok, _} = application:ensure_all_started(epgsql),
-    {ok, C} =
-        epgsql:connect(#{host => "database",
-                         database => "todosrv_db",
-                         username => "todosrv",
-                         password => "todosrv_supersecure"}),
+start_link(Config) ->
+    {ok, C} = epgsql:connect(maps:from_list(Config)),
     gen_server:start_link({local, ?MODULE}, ?MODULE, #{conn => C}, []).
 
 init(Args) ->

@@ -6,7 +6,6 @@ WORKDIR /data
 RUN apk add --no-cache gcc g++
 
 COPY src src/
-# COPY config config/
 COPY rebar.config .
 RUN rebar3 release
 

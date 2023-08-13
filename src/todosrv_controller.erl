@@ -1,4 +1,4 @@
--module(todosrv_http).
+-module(todosrv_controller).
 
 -export([init/2, allowed_methods/2, content_types_provided/2, todos_handler/2,
          content_types_accepted/2, delete_resource/2]).
