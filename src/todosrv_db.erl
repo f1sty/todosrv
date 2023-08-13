@@ -1,8 +1,11 @@
 -module(todosrv_db).
 
--export([start_link/1, init/1, handle_call/3, user_todos/1]).
+-export([start_link/1, init/1, handle_call/3, list_todos_by_user_id/1,
+         delete_todo_by_user_id_todo_id/2]).
 
 -behaviour(gen_server).
+
+-include_lib("kernel/include/logger.hrl").
 
 start_link(_Args) ->
     {ok, _} = application:ensure_all_started(epgsql),
@@ -16,18 +19,28 @@ start_link(_Args) ->
 init(Args) ->
     {ok, Args}.
 
-handle_call({user_todos, UserId}, From, #{conn := C} = State) ->
+handle_call({list_todos_by_user_id, UserId}, _From, #{conn := C} = State) ->
     {ok, Cols, Rows} =
         epgsql:equery(C,
-                      "select t.id, content, done from todos as t join users as u on
-                                   user_id = u.id where user_id = $1",
+                      "SELECT t.id, content, done FROM todos AS t JOIN users AS u ON
+                                   user_id = u.id WHERE user_id = $1",
                       [UserId]),
     Keys = field_names(Cols),
     List = lists:map(fun(Values) -> map(Keys, Values) end, Rows),
-    {reply, List, State}.
+    {reply, List, State};
+handle_call({delete_todo_by_user_id_todo_id, UserId, TodoId},
+            _From,
+            #{conn := C} = State) ->
+    Ret = epgsql:equery(C,
+                        "DELETE FROM todos WHERE user_id = $1 AND id = $2",
+                        [UserId, TodoId]),
+    {reply, Ret, State}.
 
-user_todos(UserId) ->
-    gen_server:call(?MODULE, {user_todos, UserId}).
+list_todos_by_user_id(UserId) ->
+    gen_server:call(?MODULE, {list_todos_by_user_id, UserId}).
+
+delete_todo_by_user_id_todo_id(UserId, TodoId) ->
+    gen_server:call(?MODULE, {delete_todo_by_user_id_todo_id, UserId, TodoId}).
 
 field_names(Cols) ->
     [FieldName || {column, FieldName, _, _, _, _, _, _, _} <- Cols].
