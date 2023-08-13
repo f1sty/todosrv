@@ -17,8 +17,8 @@ init(Args) ->
 
 handle_call({user_todos, User}, From, #{conn := C} = State) ->
   {ok, Cols, Rows} = epgsql:squery(C, "select * from users"),
-  FieldNames = field_names(Cols),
-  List = lists:map(fun(Entry) -> maps:from_list(lists:zip(FieldNames, tuple_to_list(Entry))) end, Rows),
+  Keys = field_names(Cols),
+  List = lists:map(fun(Values) -> map(Keys, Values) end, Rows),
   {reply, List, State}.
 
 user_todos(User) ->
@@ -26,3 +26,6 @@ user_todos(User) ->
 
 field_names(Cols) ->
   [FieldName || {column, FieldName, _, _, _, _, _, _, _} <- Cols].
+
+map(Keys, Values) ->
+  maps:from_list(lists:zip(Keys, tuple_to_list(Values))).
