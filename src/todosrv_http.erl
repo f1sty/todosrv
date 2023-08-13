@@ -17,9 +17,16 @@ content_types_accepted(Req, State) ->
   {[{<<"application/json">>, todos_handler}], Req, State}.
 
 todos_handler(#{method := <<"GET">>, bindings := #{user := User}} = Req, State) ->
-  Todos = todosrv_db:user_todos(User),
-  Body = #{todos => Todos},
-  {jiffy:encode(Body), Req, State};
+  try binary_to_integer(User) of
+    UserId ->
+      Todos = todosrv_db:user_todos(UserId),
+      Body = #{todos => Todos},
+      {jiffy:encode(Body), Req, State}
+  catch
+    error:badarg ->
+      cowboy_req:reply(400, #{}, Req),
+      {stop, Req, State}
+  end;
 todos_handler(#{method := <<"POST">>, bindings := #{user := User}} = Req, State) ->
   BodyRaw = #{todos => [#{user => User, title => <<"feed the cat">>, status => done}]},
   Body = jiffy:encode(BodyRaw),

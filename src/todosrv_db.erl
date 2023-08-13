@@ -15,14 +15,15 @@ start_link(_Args) ->
 init(Args) ->
   {ok, Args}.
 
-handle_call({user_todos, User}, From, #{conn := C} = State) ->
-  {ok, Cols, Rows} = epgsql:squery(C, "select * from users"),
+handle_call({user_todos, UserId}, From, #{conn := C} = State) ->
+  {ok, Cols, Rows} = epgsql:equery(C, "select t.id, content, done from todos as t join users as u on
+                                   user_id = u.id where user_id = $1", [UserId]),
   Keys = field_names(Cols),
   List = lists:map(fun(Values) -> map(Keys, Values) end, Rows),
   {reply, List, State}.
 
-user_todos(User) ->
-  gen_server:call(?MODULE, {user_todos, User}).
+user_todos(UserId) ->
+  gen_server:call(?MODULE, {user_todos, UserId}).
 
 field_names(Cols) ->
   [FieldName || {column, FieldName, _, _, _, _, _, _, _} <- Cols].
