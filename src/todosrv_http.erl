@@ -41,12 +41,13 @@ todos_handler(#{method := <<"POST">>, bindings := #{user := User}} = Req0, State
             cowboy_req:reply(400, #{}, Req),
             {stop, Req, State}
     end;
-todos_handler(#{method := <<"PATCH">>, bindings := #{user := User, todo := Todo}} = Req0, State) ->
+todos_handler(#{method := <<"PATCH">>, bindings := #{user := User, todo := Todo}} = Req0,
+              State) ->
     {ok, [{BodyRaw, true}], Req} = cowboy_req:read_urlencoded_body(Req0),
     {Body} = jiffy:decode(BodyRaw),
     {<<"done">>, IsDone} = lists:keyfind(<<"done">>, 1, Body),
     try {binary_to_integer(User), binary_to_integer(Todo)} of
-      {UserId, TodoId} ->
+        {UserId, TodoId} ->
             todosrv_db:update_todo_by_user_id(UserId, TodoId, IsDone),
             {true, Req, State}
     catch
