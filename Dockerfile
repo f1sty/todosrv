@@ -3,7 +3,7 @@ FROM erlang:26-alpine as builder
 RUN mkdir /data
 WORKDIR /data
 
-RUN apk add --no-cache gcc g++
+RUN apk add --no-cache gcc g++ git
 
 COPY src src/
 COPY rebar.config .

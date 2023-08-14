@@ -1,66 +1,96 @@
 -module(todosrv_db).
 
--export([start_link/1, init/1, handle_call/3, list_todos_by_user_id/1,
-         delete_todo_by_user_id_todo_id/2, create_todo_by_user_id/2, update_todo_by_user_id/3]).
+% Callbacks
+-export([init/1, handle_call/3, handle_cast/2]).
+% APIs
+-export([start_link/1, get_user_todos/1, get_user_todo/2, get_user_id_verified/2,
+         delete_user_todo/2, create_user_todo/2, update_user_todo/3]).
 
 -behaviour(gen_server).
 
--include_lib("kernel/include/logger.hrl").
-
-start_link(Config) ->
-    {ok, C} = epgsql:connect(maps:from_list(Config)),
-    gen_server:start_link({local, ?MODULE}, ?MODULE, #{conn => C}, []).
+% Callbacks
 
 init(Args) ->
     {ok, Args}.
 
-handle_call({list_todos_by_user_id, UserId}, _From, #{conn := C} = State) ->
+% TODO: handle properly, vulnerable to SQL-injection
+handle_call({get_user_todos, UserId}, _From, #{conn := C} = State) ->
+    {ok, Cols, Rows} =
+        epgsql:equery(C, "SELECT id, text, done FROM todos WHERE user_id = $1", [UserId]),
+    KList = keyword_list(Cols, Rows),
+    {reply, KList, State};
+handle_call({get_user_todo, UserId, TodoId}, _From, #{conn := C} = State) ->
     {ok, Cols, Rows} =
         epgsql:equery(C,
-                      "SELECT t.id, content, done FROM todos AS t JOIN users AS u ON
-                                   user_id = u.id WHERE user_id = $1",
-                      [UserId]),
-    Keys = field_names(Cols),
-    List = lists:map(fun(Values) -> map(Keys, Values) end, Rows),
-    {reply, List, State};
-handle_call({delete_todo_by_user_id_todo_id, UserId, TodoId},
-            _From,
-            #{conn := C} = State) ->
-    Ret = epgsql:equery(C,
-                        "DELETE FROM todos WHERE user_id = $1 AND id = $2",
-                        [UserId, TodoId]),
-    {reply, Ret, State};
-handle_call({create_todo_by_user_id, UserId, TodoContent}, _From, #{conn := C} = State) ->
-    {ok, 1, Cols, Rows} =
+                      "SELECT id, text, done FROM todos WHERE user_id = $1 AND id = $2 LIMIT 1",
+                      [UserId, TodoId]),
+    KList = keyword_list(Cols, Rows),
+    {reply, KList, State};
+handle_call({delete_user_todo, UserId, TodoId}, _From, #{conn := C} = State) ->
+    {ok, Count} =
+        epgsql:equery(C, "DELETE FROM todos WHERE user_id = $1 AND id = $2", [UserId, TodoId]),
+    {reply, Count, State};
+handle_call({create_user_todo, UserId, TodoText}, _From, #{conn := C} = State) ->
+    {ok, 1, _Cols, [{TodoId}]} =
         epgsql:equery(C,
-                      "INSERT INTO todos(user_id, content) VALUES ($1, $2) RETURNING id",
-                      [UserId, TodoContent]),
-    Uri = io_lib:format("/~b/todos", [UserId]),
-    {reply, Uri, State};
-handle_call({update_todo_by_user_id, UserId, TodoId, IsDone},
-            _From,
-            #{conn := C} = State) ->
-    {ok, 1} =
+                      "INSERT INTO todos(user_id, text) VALUES ($1, $2) RETURNING id",
+                      [UserId, TodoText]),
+    {reply, TodoId, State};
+handle_call({update_user_todo, UserId, TodoId, IsDone}, _From, #{conn := C} = State) ->
+    {ok, Count} =
         epgsql:equery(C,
                       "UPDATE todos SET done = $1 WHERE user_id = $2 AND id = $3",
                       [IsDone, UserId, TodoId]),
-    {reply, ok, State}.
+    {reply, Count, State};
+handle_call({get_user_id_verified, UserId, Password}, _From, #{conn := C} = State) ->
+    case epgsql:equery(C,
+                       "SELECT encrypted_password = crypt($1, encrypted_password) AS is_correct, id FROM users WHERE id = $2",
+                       [Password, UserId])
+    of
+        {ok, _Cols, [{true, UserId}]} ->
+            {reply, {ok, UserId}, State};
+        _ ->
+            {reply, {error, <<"wrong credentials">>}, State}
+    end.
 
-list_todos_by_user_id(UserId) ->
-    gen_server:call(?MODULE, {list_todos_by_user_id, UserId}).
+handle_cast(_Msg, State) ->
+    {noreply, State}.
 
-delete_todo_by_user_id_todo_id(UserId, TodoId) ->
-    gen_server:call(?MODULE, {delete_todo_by_user_id_todo_id, UserId, TodoId}).
+% APIs
 
-create_todo_by_user_id(UserId, Todo) ->
-    gen_server:call(?MODULE, {create_todo_by_user_id, UserId, Todo}).
+start_link(Config) ->
+    {ok, C} =
+        epgsql:connect(
+            maps:from_list(Config)),
+    gen_server:start_link({local, ?MODULE}, ?MODULE, #{conn => C}, []).
 
-update_todo_by_user_id(UserId, TodoId, IsDone) ->
-    gen_server:call(?MODULE, {update_todo_by_user_id, UserId, TodoId, IsDone}).
+get_user_todos(UserId) ->
+    gen_server:call(?MODULE, {get_user_todos, UserId}).
 
-field_names(Cols) ->
+get_user_todo(UserId, TodoId) ->
+    gen_server:call(?MODULE, {get_user_todo, UserId, TodoId}).
+
+delete_user_todo(UserId, TodoId) ->
+    gen_server:call(?MODULE, {delete_user_todo, UserId, TodoId}).
+
+create_user_todo(UserId, Todo) ->
+    gen_server:call(?MODULE, {create_user_todo, UserId, Todo}).
+
+update_user_todo(UserId, TodoId, IsDone) ->
+    gen_server:call(?MODULE, {update_user_todo, UserId, TodoId, IsDone}).
+
+get_user_id_verified(UserId, Password) ->
+    gen_server:call(?MODULE, {get_user_id_verified, UserId, Password}).
+
+% Privat functions
+
+keyword_list(Cols, Rows) ->
+    Keys = keys(Cols),
+    lists:map(fun(Values) -> tuple(Keys, Values) end, Rows).
+
+keys(Cols) ->
     [FieldName || {column, FieldName, _, _, _, _, _, _, _} <- Cols].
 
-map(Keys, Values) ->
+tuple(Keys, Values) ->
     maps:from_list(
         lists:zip(Keys, tuple_to_list(Values))).

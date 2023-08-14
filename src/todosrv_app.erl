@@ -10,13 +10,7 @@
 -export([start/2, stop/1]).
 
 start(_StartType, _StartArgs) ->
-    {ok, _} = application:ensure_all_started(cowboy),
-    {ok, _} = application:ensure_all_started(epgsql),
-
-    logger:set_module_level(todosrv_controller, info),
-    logger:set_module_level(todosrv_db, info),
-
-    Routes = [{"/[:user]/todos/[:todo]", todosrv_controller, []}],
+    Routes = [{"/todos/[:todo_id]", todosrv_controller, []}],
     Dispatch = cowboy_router:compile([{'_', Routes}]),
 
     {ok, _} = cowboy:start_clear(http, [{port, 9090}], #{env => #{dispatch => Dispatch}}),

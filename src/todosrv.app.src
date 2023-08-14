@@ -4,16 +4,14 @@
   {vsn, "0.1.0"},
   {registered, []},
   {mod, {todosrv_app, []}},
-  {applications, [kernel, stdlib]},
-  {env, [{todosrv,
-  [{todosrv_db,
-    [
-    {database, "todosrv_db"},
-    {username, "todosrv"},
-    {host, "database"},
-    {password, "todosrv_supersecure"}
-    ]
-  }]}]},
+  {applications, [kernel, stdlib, ranch, cowboy, epgsql, cowboy_session, jiffy]},
+  {env,
+   [{todosrv,
+     [{todosrv_db,
+       [{database, "todosrv"},
+        {username, "todosrv"},
+        {host, "database"},
+        {password, "todosrv"}]}]}]},
   {modules, []},
   {licenses, ["Apache-2.0"]},
   {links, []}]}.
