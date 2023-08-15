@@ -100,3 +100,9 @@ Response: Empty body with **204 No Content** HTTP response status code.
 - **DELETE** `/todos/[:todo_id]` delete a particular todo for the current user:
 
 Response: Empty body with **204 No Content** HTTP response status code.
+
+## Notes
+
+I've spent quite some time trying to fix and run some third-party libraries and apps with the
+latest Erlang/OTP (e.g. boss_db, ChicagoBoss, nitrogen), and have had varying success:). But then
+I decided to go with a less heavy-weight and more reliable option.
