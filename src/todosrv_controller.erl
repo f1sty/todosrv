@@ -111,4 +111,4 @@ login(UserId, Password, #{path := Path} = Req, State) ->
     end.
 
 current_user(Req) ->
-    cowboy_session:get(user_id, Req).
+    cowboy_session:get(user_id, undefined, Req).
